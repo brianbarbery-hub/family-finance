@@ -171,11 +171,17 @@ function parseCSV(text) {
   const lines = text.trim().split('\n').filter(l => l.trim());
   if (lines.length < 2) return [];
   const hdr = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+  console.log('CSV headers detected:', hdr);
   const di  = hdr.findIndex(h => h.includes('description'));
   const ci  = hdr.findIndex(h => h.includes('category'));
   const ai  = hdr.findIndex(h => h.includes('amount'));
   const dti = hdr.findIndex(h => h.includes('date'));
-  if (ai < 0 || ci < 0) return [];
+  console.log('Column map -> date:'+dti+' desc:'+di+' cat:'+ci+' amt:'+ai);
+  console.log('Total lines in CSV:', lines.length);
+  if (ai < 0 || ci < 0) {
+    console.error('MISSING COLUMNS - headers were:', hdr);
+    return [];
+  }
   const rows = [];
   lines.slice(1).forEach(line => {
     // Handle quoted fields with commas inside
@@ -274,7 +280,11 @@ async function fetchAndRender() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     const rows = parseCSV(text);
-    if (rows.length < 10) throw new Error('Too few rows parsed — check sheet is published correctly');
+    if (rows.length < 10) {
+      // Parse the first line to show headers in error
+      const firstLine = text.split('\n')[0];
+      throw new Error('Only ' + rows.length + ' rows parsed. First line of sheet: ' + firstLine.slice(0,120));
+    }
 
     DASH = processRows(rows);
     activeM = DASH.last12_labels.length - 1;
@@ -283,7 +293,9 @@ async function fetchAndRender() {
     const now = new Date();
     const ts  = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     setStatus('live', 'Live — ' + ts);
-    document.getElementById('dataNote').textContent = 'Live Tiller data · ' + rows.length.toLocaleString() + ' transactions · Auto-refreshes on page load';
+    const dates = rows.map(r => r.mo).filter(m => m !== 'Unknown').sort();
+    const dateRange = dates.length > 0 ? dates[0] + ' to ' + dates[dates.length-1] : 'unknown range';
+    document.getElementById('dataNote').textContent = 'Live Tiller data · ' + rows.length.toLocaleString() + ' transactions · ' + dateRange + ' · Auto-refreshes on page load';
     document.getElementById('footer').textContent = 'Last synced: ' + ts + ' · Data flows directly from your Tiller Google Sheet';
 
     document.getElementById('loader').style.display = 'none';
