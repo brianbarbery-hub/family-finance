@@ -235,42 +235,55 @@ const URLS = {
 
 // ── CATEGORY MAPS ─────────────────────────────────────────────────────────────
 const HH_GROUPS = {
-  Tithe:    ['Tithe','Charitable Giving'],
-  Auto:     ['Gasoline','Auto Maintenance','Auto Repair','Auto Insurance','Auto Tax','Auto Carwash'],
-  Home:     ['Mortgage','HOA Fees','Home Maintenance','Home Repair','Home Remodel','Home Insurance','Lawncare','Pest Control','Furniture','Home'],
-  Food:     ['Groceries','Restaurants'],
-  Health:   ['Medical','Dental','Eye','Prescription','Therapy','Stevens Healthcare','Stevens Expense','Fitness'],
-  Family:   ['College Tuition','College Expenses','College Expense','Kids Activities','Pet Care','Pet Food'],
-  Personal: ['Clothing','Beauty','Beauty and Haircare','Shopping','Adult Activities','Entertainment','Gifts','Christmas'],
-  Travel:   ['Travel','ATL Lodging','Relocation - Expenses'],
-  Financial:['Life Insurance','Interest','Bank Fees'],
-  Digital:  ['Subscription','Technology','Phone','Internet'],
-  Work:     ['E Work Expenses','E Office Supplies','Work Expense']
+  Tithe:     ['Tithe','Charitable Giving'],
+  Auto:      ['Gasoline','Auto Maintenance','Auto Repair','Auto Insurance','Auto Tax','Auto Carwash'],
+  Home:      ['Mortgage','HOA Fees','Home Maintenance','Home Repair','Home Remodel','Home Insurance','Lawncare','Pest Control','Furniture','Home','ATL Lodging','Utilities','Property Tax'],
+  Food:      ['Groceries','Restaurants'],
+  Health:    ['Medical','Dental','Eye','Prescription','Therapy','Stevens Healthcare','Fitness'],
+  Family:    ['College Tuition','College Expenses','Kids Activities','Pet Care','Pet Food'],
+  Personal:  ['Clothing','Beauty and Haircare','Shopping','Adult Activities','Entertainment','Gifts','Christmas','Jewelry','Home Decor','Clemson Tix'],
+  Travel:    ['Travel','Relocation - Expenses'],
+  Financial: ['Life Insurance','Bank Fees','Debt Repayment','Legal','Misc'],
+  Digital:   ['Subscription','Technology','Phone','Internet'],
+  Work:      ['E Work Expenses','E Office Supplies','E Computer']
 };
 const HH_COLORS = {Tithe:'#c07818',Auto:'#2878cc',Home:'#1a8a65',Food:'#d68a00',Health:'#c03030',Family:'#6040b0',Personal:'#c04070',Travel:'#c05828',Financial:'#707070',Digital:'#508820',Work:'#40a080'};
 
-// Elizabeth - Main Street Travel business categories
+// Elizabeth - Main Street Travel (from Categories tab)
 const EL_GROUPS = {
-  Technology:       ['Technology','Software','Subscriptions','Tech'],
-  Travel:           ['Travel','Travel Expense','Hotels','Flights','Transportation'],
-  'Office Supplies':['Office Supplies','Office','Supplies','Printing'],
-  Meals:            ['Meals','Dining','Restaurants','Lunch','Breakfast','Dinner','Client Meals'],
-  Entertainment:    ['Entertainment','Client Entertainment'],
-  Other:            ['Miscellaneous','Other','Misc','Bank Fees','Fees']
+  Technology:        ['Technology'],
+  Travel:            ['Travel'],
+  'Office Supplies': ['Office Supplies'],
+  Meals:             ['Meals'],
+  Entertainment:     ['Entertainment'],
+  'Misc Expenses':   ['Misc Expenses']
 };
-const EL_COLORS = {Technology:'#508820',Travel:'#2878cc','Office Supplies':'#d68a00',Meals:'#EF9F27',Entertainment:'#c04070',Other:'#888'};
+const EL_COLORS = {Technology:'#508820',Travel:'#2878cc','Office Supplies':'#d68a00',Meals:'#EF9F27',Entertainment:'#c04070','Misc Expenses':'#888'};
 
 // Stevens - flexible, reads whatever categories are in her sheet
+// Stevens - from Categories tab
+const ST_GROUPS = {
+  'Medical & Dental': ['Medical and Dental','Prescription'],
+  Housing:            ['Housing'],
+  Groceries:          ['Groceries'],
+  Transportation:     ['Transportation'],
+  Education:          ['Education'],
+  Discretionary:      ['Restaurants','Entertainment','Shopping','Travel','Subscriptions','Gifts','Charity','Clothing','Apple','Amazon','Cash App'],
+  Living:             ['Fitness','Insurance','Kids','Pets','Utilities and Bills'],
+  Financial:          ['Bank Fees','Loan Repayment','Taxes','Savings'],
+  Other:              ['Misc','Check','Home Improvement']
+};
+const ST_COLORS = {'Medical & Dental':'#c03030',Housing:'#1a8a65',Groceries:'#d68a00',Transportation:'#2878cc',Education:'#6040b0',Discretionary:'#c04070',Living:'#508820',Financial:'#707070',Other:'#888'};
 const ST_COLORS_LIST = ['#c05828','#c03030','#6040b0','#2878cc','#d68a00','#508820','#c04070','#707070','#1a8a65','#888'];
 
 // ── SHARED CONSTANTS ──────────────────────────────────────────────────────────
-const EXCL     = ['cc payment','transfer','income taxes','overdraft','transfers'];
-const HH_INCC  = ['paycheck','paycheck stevens','b paycheck','e paycheck','b bonus','bonus','b profit sharing','profit sharing','relocation -income','home sale'];
-const HH_BRIAN = ['Paycheck','B Paycheck','Bonus','B Bonus','Profit Sharing','B Profit Sharing'];
-const HH_ELIZ  = ['E Paycheck'];
+const EXCL     = ['cc payment','transfer','overdraft','fund account','$ move between accounts','income taxes','work expense','stevens expenses','paycheck stevens'];
+const HH_INCC  = ['paycheck','b paycheck','b bonus','b profit sharing','relocation -income','home sale','interest','paycheck elizabeth'];
+const HH_BRIAN = ['Paycheck','B Paycheck','B Bonus','B Profit Sharing'];
+const HH_ELIZ  = ['Paycheck Elizabeth'];
 const HH_OTHER = ['Relocation -Income','Home Sale'];
-const EL_INCC  = ['income','commission','revenue','sales','paycheck'];
-const ST_INCC  = ['income','paycheck','wages','salary'];
+const EL_INCC  = ['paycheck'];
+const ST_INCC  = ['paycheck','other income','interest','income taxes'];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const STATE = {
@@ -362,7 +375,7 @@ function processRows(rows, groupMap, inccList, colorMap) {
   last12.forEach(m => {
     const mR  = rows.filter(r => r.mo === m);
     const sp  = mR.filter(r => !EXCL.includes(r.cat.toLowerCase()) && !inccList.includes(r.cat.toLowerCase()) && r.cat.trim() !== '' && r.amt < 0);
-    const inc = mR.filter(r => inccList.includes(r.cat.toLowerCase()) && r.amt > 0);
+    const inc = mR.filter(r => inccList.includes(r.cat.toLowerCase()) && r.amt > 0 && !EXCL.includes(r.cat.toLowerCase()));
     const groups = {}, detail = {}, group_tx = {};
 
     grpKeys.forEach(g => {
@@ -397,7 +410,7 @@ function processRows(rows, groupMap, inccList, colorMap) {
 // ── HH-SPECIFIC INCOME PROCESSOR ─────────────────────────────────────────────
 function hhIncomeDetail(rows, m) {
   const mR  = rows.filter(r => r.mo === m);
-  const inc = mR.filter(r => HH_INCC.includes(r.cat.toLowerCase()) && r.amt > 0);
+  const inc = mR.filter(r => HH_INCC.includes(r.cat.toLowerCase()) && r.amt > 0 && !EXCL.includes(r.cat.toLowerCase()));
   const sum  = arr => Math.round(arr.reduce((a,b)=>a+b.amt,0)*100)/100;
   const bR   = inc.filter(r => HH_BRIAN.includes(r.cat));
   const eR   = inc.filter(r => HH_ELIZ.includes(r.cat));
@@ -431,9 +444,9 @@ async function fetchView(view) {
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('No data parsed — check sheet is published as CSV');
 
-    const groupMap = view==='household' ? HH_GROUPS : view==='elizabeth' ? EL_GROUPS : buildStevensGroups(rows);
+    const groupMap = view==='household' ? HH_GROUPS : view==='elizabeth' ? EL_GROUPS : ST_GROUPS;
     const inccList = view==='household' ? HH_INCC : view==='elizabeth' ? EL_INCC : ST_INCC;
-    const colorMap = view==='household' ? HH_COLORS : view==='elizabeth' ? EL_COLORS : null;
+    const colorMap = view==='household' ? HH_COLORS : view==='elizabeth' ? EL_COLORS : ST_COLORS;
 
     s.dash = processRows(rows, groupMap, inccList, colorMap);
     s.rows = rows;  // keep raw rows for HH income detail
@@ -467,13 +480,7 @@ async function fetchView(view) {
   }
 }
 
-function buildStevensGroups(rows) {
-  // Dynamically build groups from whatever categories exist in Stevens sheet
-  const cats = [...new Set(rows.filter(r=>r.amt<0).map(r=>r.cat))].filter(c=>c&&!ST_INCC.includes(c.toLowerCase())&&!EXCL.includes(c.toLowerCase()));
-  const groups = {};
-  cats.forEach(c => { groups[c] = [c]; });
-  return groups;
-}
+// Stevens groups defined in ST_GROUPS constant
 
 function viewLabel(v) {
   return v==='household'?'Barbery Household':v==='elizabeth'?'Elizabeth Business':'Stevens';
