@@ -327,7 +327,11 @@ function parseCSV(text) {
 // ── DATA PROCESSOR ────────────────────────────────────────────────────────────
 function processRows(rows, groupMap, inccList, colorMap) {
   const months = [...new Set(rows.map(r => r.mo))].sort();
-  const last12 = months.slice(-12), last6 = last12.slice(-6);
+  // Always include current month even if mid-month
+  const nowMo = new Date().toISOString().slice(0,7);
+  if (!months.includes(nowMo) && months.length > 0) months.push(nowMo);
+  months.sort();
+  const last12 = months.slice(-13), last6 = last12.slice(-6); // -13 ensures current partial month included
   const monthly = {}, trend = {}, incTrend = [];
   const grpKeys = Object.keys(groupMap);
   grpKeys.forEach(g => trend[g] = []);
@@ -534,9 +538,9 @@ function buildKPIs(view) {
   const avg  = s.dash.spend_trend.reduce((a,b)=>a+b,0)/s.dash.spend_trend.length;
   const net  = d.income - d.spend;
   const kpis = [
+    {l:'Total income',   v:d.income>0?fmt(d.income):'—', s:d.income>0?'recorded this month':'not yet recorded', c:d.income>0?'ok':'warn'},
     {l:'Total spending', v:fmt(d.spend), s:d.spend>avg?fmt(d.spend-avg)+' above avg':fmt(avg-d.spend)+' below avg', c:d.spend>avg*1.3?'danger':d.spend>avg?'warn':'ok'},
-    {l:'Total income',   v:d.income>0?fmt(d.income):'—', s:d.income>0?'recorded':'not yet recorded', c:d.income>0?'ok':'warn'},
-    {l:'Net cash flow',  v:d.income>0?fmt(net):'—', s:d.income>0?(net>=0?'positive':'negative cash flow'):'awaiting income', c:d.income>0?(net>=0?'ok':'danger'):''},
+    {l:'Net cash flow',  v:d.income>0?fmt(net):'—', s:d.income>0?(net>=0?'positive cash flow':'negative cash flow'):'awaiting income', c:d.income>0?(net>=0?'ok':'danger'):''},
     {l:'6-mo avg spend', v:fmt(avg), s:'rolling baseline', c:''}
   ];
   el(PREFIX[view]+'-kpis').innerHTML = kpis.map(r => '<div class="met"><div class="ml">'+r.l+'</div><div class="mv">'+r.v+'</div><div class="ms '+r.c+'">'+r.s+'</div></div>').join('');
