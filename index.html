@@ -95,6 +95,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
       </div>
       <button class="hbtn active" id="btnExpenses" onclick="setPanel('expenses')">Expenses</button>
       <button class="hbtn" id="btnIncome" onclick="setPanel('income')">Income</button>
+      <button class="hbtn" id="btnYTD" onclick="toggleYTD()">YTD</button>
       <button class="hbtn" id="refreshBtn" onclick="refreshCurrent()">&#8635;</button>
       <div class="status"><div class="sdot" id="statusDot"></div><span id="statusText">Loading...</span></div>
     </div>
@@ -235,17 +236,17 @@ const URLS = {
 
 // ── CATEGORY MAPS ─────────────────────────────────────────────────────────────
 const HH_GROUPS = {
-  Tithe:     ['Tithe','Charitable Giving'],
-  Auto:      ['Gasoline','Auto Maintenance','Auto Repair','Auto Insurance','Auto Tax','Auto Carwash'],
-  Home:      ['Mortgage','HOA Fees','Home Maintenance','Home Repair','Home Remodel','Home Insurance','Lawncare','Pest Control','Furniture','Home','ATL Lodging','Utilities','Property Tax'],
-  Food:      ['Groceries','Restaurants'],
-  Health:    ['Medical','Dental','Eye','Prescription','Therapy','Stevens Healthcare','Fitness'],
-  Family:    ['College Tuition','College Expenses','Kids Activities','Pet Care','Pet Food'],
-  Personal:  ['Clothing','Beauty and Haircare','Shopping','Adult Activities','Entertainment','Gifts','Christmas','Jewelry','Home Decor','Clemson Tix'],
-  Travel:    ['Travel','Relocation - Expenses'],
-  Financial: ['Life Insurance','Bank Fees','Debt Repayment','Legal','Misc'],
-  Digital:   ['Subscription','Technology','Phone','Internet'],
-  Work:      ['E Work Expenses','E Office Supplies','E Computer']
+  Tithe:      ['Tithe','Charitable Giving'],
+  Auto:       ['Gasoline','Auto Maintenance','Auto Repair','Auto Insurance','Auto Tax','Auto Carwash'],
+  Home:       ['Mortgage','HOA Fees','Home Maintenance','Home Repair','Home Remodel','Home Insurance','Lawncare','Pest Control','Furniture','Home','ATL Lodging','Utilities','Property Tax'],
+  Food:       ['Groceries','Restaurants'],
+  Health:     ['Medical','Dental','Eye','Prescription','Therapy','Stevens Healthcare','Fitness'],
+  Family:     ['College Tuition','College Expenses','Kids Activities','Pet Care','Pet Food'],
+  Personal:   ['Clothing','Beauty and Haircare','Shopping','Adult Activities','Entertainment','Gifts','Christmas','Jewelry','Home Decor','Clemson Tix'],
+  Travel:     ['Travel'],
+  Financial:  ['Life Insurance','Bank Fees','Debt Repayment','Legal','Misc','Relocation - Expenses'],
+  Digital:    ['Subscription','Technology','Phone','Internet'],
+  Work:       ['E Work Expenses','E Office Supplies','E Computer']
 };
 const HH_COLORS = {Tithe:'#c07818',Auto:'#2878cc',Home:'#1a8a65',Food:'#d68a00',Health:'#c03030',Family:'#6040b0',Personal:'#c04070',Travel:'#c05828',Financial:'#707070',Digital:'#508820',Work:'#40a080'};
 
@@ -287,10 +288,11 @@ const ST_INCC  = ['paycheck','other income','interest','income taxes'];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const STATE = {
-  household: {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false},
-  elizabeth: {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false},
-  stevens:   {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false}
+  household: {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false, ytd:false},
+  elizabeth: {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false, ytd:false},
+  stevens:   {dash:null, activeM:0, activeDrill:null, panel:'expenses', chart:null, incChart:null, loaded:false, ytd:false}
 };
+let ytdMode = false;
 let activeView = 'household';
 const PREFIX = {household:'hh', elizabeth:'el', stevens:'st'};
 
@@ -557,11 +559,17 @@ function renderView(view) {
   el(PREFIX[view]+'-expenses').style.display = s.panel==='income'?'none':'';
   el(PREFIX[view]+'-income').style.display   = s.panel==='income'?'':'none';
   if (s.panel==='income') buildIncomeView(view);
+  // Update data note to show YTD context
+  if (ytdMode) {
+    const yr = s.dash.last12_labels[s.activeM].slice(0,4);
+    el('dataNote').textContent = viewLabel(view) + ' · ' + yr + ' Year-to-Date through ' + mlabel(s.dash.last12_labels[s.activeM]);
+  }
 }
 
 function buildKPIs(view) {
   const s    = STATE[view];
-  const d    = s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  const d    = ytdMode ? getYTDData(view) : s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  if (!d) return;
   const avg  = s.dash.spend_trend.reduce((a,b)=>a+b,0)/s.dash.spend_trend.length;
   const net  = d.income - d.spend;
   const kpis = [
@@ -576,7 +584,8 @@ function buildKPIs(view) {
 function buildGroups(view) {
   const p    = PREFIX[view];
   const s    = STATE[view];
-  const d    = s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  const d    = ytdMode ? getYTDData(view) : s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  if (!d) return;
   const clrs = s.dash.colors;
   const total= Object.values(d.groups).reduce((a,b)=>a+(b||0),0);
   el(p+'-grpGrid').innerHTML = Object.entries(d.groups).map(([g,v]) => {
@@ -597,7 +606,8 @@ function buildDrill(view) {
   if (!s.activeDrill) { de.style.display='none'; bb.style.display='none'; gt.textContent='Spending by category'; tt.textContent='6-month trend'; return; }
   de.style.display='block'; bb.style.display='inline-block';
   gt.textContent=s.activeDrill+' breakdown'; tt.textContent=s.activeDrill+' — 6-month trend';
-  const d      = s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  const d      = ytdMode ? getYTDData(view) : s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  if (!d) return;
   const detail = d.detail[s.activeDrill]||{};
   const entries= Object.entries(detail).sort((a,b)=>b[1]-a[1]);
   const max    = entries[0]?entries[0][1]:1;
@@ -641,7 +651,8 @@ function buildTrend(view) {
 function buildTx(view) {
   const p  = PREFIX[view];
   const s  = STATE[view];
-  const d  = s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  const d  = ytdMode ? getYTDData(view) : s.dash.monthly[s.dash.last12_labels[s.activeM]];
+  if (!d) return;
   const sh = el(p+'-txSubhead');
   let txList;
   if (s.activeDrill) {
