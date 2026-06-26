@@ -29,7 +29,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
 .sdot.loading{background:var(--warn)}
 .sdot.error{background:var(--danger)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}
 .tab{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s}
 .tab:hover{background:var(--bg2)}.tab.on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
@@ -539,6 +539,9 @@ function buildTabs(view) {
     b.onclick = () => { s.activeM=i; s.activeDrill=null; renderView(view); };
     tab.appendChild(b);
   });
+  // Scroll active tab into view
+  const activeTab = tab.querySelectorAll('.tab')[s.activeM];
+  if (activeTab) activeTab.scrollIntoView({inline:'nearest', block:'nearest'});
 }
 function refreshTabs(view) {
   const s = STATE[view];
