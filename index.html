@@ -265,7 +265,7 @@ const ST_COLORS_LIST = ['#c05828','#c03030','#6040b0','#2878cc','#d68a00','#5088
 
 // ── SHARED CONSTANTS ──────────────────────────────────────────────────────────
 const EXCL     = ['cc payment','transfer','income taxes','overdraft','transfers'];
-const HH_INCC  = ['paycheck','b paycheck','e paycheck','b bonus','bonus','b profit sharing','profit sharing','relocation -income','home sale'];
+const HH_INCC  = ['paycheck','paycheck stevens','b paycheck','e paycheck','b bonus','bonus','b profit sharing','profit sharing','relocation -income','home sale'];
 const HH_BRIAN = ['Paycheck','B Paycheck','Bonus','B Bonus','Profit Sharing','B Profit Sharing'];
 const HH_ELIZ  = ['E Paycheck'];
 const HH_OTHER = ['Relocation -Income','Home Sale'];
@@ -296,8 +296,7 @@ function parseCSV(text) {
   const ci  = hdr.findIndex(h => h === 'category' || h.includes('category'));
   const ai  = hdr.findIndex(h => h === 'amount' || h.includes('amount'));
   const dti = hdr.findIndex(h => h === 'date' || (h.includes('date') && !h.includes('added') && !h.includes('categorized')));
-  const moi = hdr.findIndex(h => h === 'month'); // Tiller pre-calculated month column
-  console.log('Headers:', hdr, '| date:'+dti+' month:'+moi+' desc:'+di+' cat:'+ci+' amt:'+ai);
+  console.log('Headers:', hdr, '| date:'+dti+' desc:'+di+' cat:'+ci+' amt:'+ai);
   if (ai < 0 || ci < 0) return [];
   const rows = [];
   lines.slice(1).forEach(line => {
@@ -315,19 +314,22 @@ function parseCSV(text) {
     const cat  = (cols[ci]||'').replace(/^"|"$/g,'').trim();
     const desc = di >= 0 ? (cols[di]||'').replace(/^"|"$/g,'').trim() : '';
     let mo = 'Unknown';
-    // Use DATE column (actual transaction date) - more accurate than Tiller's Month column
-    // Tiller's Month column reflects billing period which can differ from transaction date
+    // Parse date from Date column using transaction date
     if (dti >= 0) {
       const raw = (cols[dti]||'').replace(/^"|"$/g,'').trim();
-      const mdy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      const iso = raw.match(/^(\d{4})-(\d{2})/);
-      if (mdy) {
-        let yr = parseInt(mdy[3]);
+      let yr = 0, mon = 0;
+      // Handle M/D/YYYY or M/D/YY
+      const p = raw.split('/');
+      if (p.length === 3) {
+        mon = parseInt(p[0]);
+        yr  = parseInt(p[2]);
         if (yr < 100) yr += 2000;
-        mo = yr+'-'+String(parseInt(mdy[1])).padStart(2,'0');
-      } else if (iso) {
-        mo = iso[1]+'-'+iso[2];
+      } else {
+        // Handle YYYY-MM-DD
+        const q = raw.split('-');
+        if (q.length >= 2) { yr = parseInt(q[0]); mon = parseInt(q[1]); }
       }
+      if (yr > 2000 && mon > 0) mo = yr + '-' + String(mon).padStart(2,'0');
     }
     if (!isNaN(amt) && cat && mo !== 'Unknown') rows.push({amt, cat, desc, mo});
   });
