@@ -297,7 +297,7 @@ const PREFIX = {household:'hh', elizabeth:'el', stevens:'st'};
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const fmt  = n => '$' + Math.round(Math.abs(n)).toLocaleString();
 const fmtS = n => Math.abs(n) >= 1000 ? '$' + (Math.abs(n)/1000).toFixed(1).replace('.0','') + 'k' : fmt(n);
-const mlabel = k => { const d=new Date(k+'-01'); return d.toLocaleString('default',{month:'short',year:'2-digit'}); };
+const mlabel = k => { const p=k.split('-'); const d=new Date(parseInt(p[0]),parseInt(p[1])-1,1); return d.toLocaleString('default',{month:'short',year:'2-digit'}); };
 const el = id => document.getElementById(id);
 
 // ── CSV PARSER ────────────────────────────────────────────────────────────────
