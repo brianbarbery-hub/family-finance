@@ -721,6 +721,40 @@ function buildIncomeView(view) {
 function toggleDrill(view, g) { const s=STATE[view]; s.activeDrill=s.activeDrill===g?null:g; buildGroups(view); buildDrill(view); buildTrend(view); buildTx(view); }
 function clearDrill(p)       { const view=Object.keys(PREFIX).find(k=>PREFIX[k]===p); const s=STATE[view]; s.activeDrill=null; buildGroups(view); buildDrill(view); buildTrend(view); buildTx(view); }
 
+// ── YTD ──────────────────────────────────────────────────────────────────────
+let ytdMode = false;
+
+function toggleYTD() {
+  ytdMode = !ytdMode;
+  el('btnYTD').className = ytdMode ? 'hbtn active' : 'hbtn';
+  renderView(activeView);
+}
+
+function getYTDData(view) {
+  const s = STATE[view];
+  if (!s.dash) return null;
+  const currentKey = s.dash.last12_labels[s.activeM];
+  const currentYear = currentKey.slice(0,4);
+  const ytdKeys = s.dash.last12_labels.filter((k,i) => k.startsWith(currentYear) && i <= s.activeM);
+  if (ytdKeys.length === 0) return null;
+  const grpKeys = Object.keys(s.dash.monthly[currentKey].groups);
+  const groups = {}, detail = {}, group_tx = {};
+  grpKeys.forEach(g => {
+    groups[g] = Math.round(ytdKeys.reduce((a,k) => a + (s.dash.monthly[k]?.groups[g]||0), 0) * 100) / 100;
+    detail[g] = {};
+    ytdKeys.forEach(k => {
+      Object.entries(s.dash.monthly[k]?.detail[g]||{}).forEach(([cat,v]) => {
+        detail[g][cat] = Math.round(((detail[g][cat]||0) + v) * 100) / 100;
+      });
+    });
+    group_tx[g] = ytdKeys.flatMap(k => s.dash.monthly[k]?.group_tx[g]||[]).sort((a,b)=>b.amt-a.amt).slice(0,8);
+  });
+  const spend  = Math.round(ytdKeys.reduce((a,k) => a + (s.dash.monthly[k]?.spend||0), 0) * 100) / 100;
+  const income = Math.round(ytdKeys.reduce((a,k) => a + (s.dash.monthly[k]?.income||0), 0) * 100) / 100;
+  const top_tx = ytdKeys.flatMap(k => s.dash.monthly[k]?.top_tx||[]).sort((a,b)=>b.amt-a.amt).slice(0,8);
+  return {spend, income, groups, detail, top_tx, group_tx};
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 setStatus('loading', 'Loading...');
 fetchView('household');
