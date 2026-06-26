@@ -354,7 +354,7 @@ function processRows(rows, groupMap, inccList, colorMap) {
   const nowMo = new Date().toISOString().slice(0,7);
   if (!months.includes(nowMo) && months.length > 0) months.push(nowMo);
   months.sort();
-  const last12 = months.slice(-13), last6 = last12.slice(-6); // -13 ensures current partial month included
+  const last12 = months.slice(-14), last6 = last12.slice(-6); // show last 14 months to include current partial month
   console.log('All months found:', months);
   console.log('Last 13 shown:', last12);
   console.log('Sample row 1:', rows[0]);
