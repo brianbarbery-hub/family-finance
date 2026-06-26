@@ -29,7 +29,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
 .sdot.loading{background:var(--warn)}
 .sdot.error{background:var(--danger)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}
+.tabs{display:flex;gap:4px;flex-wrap:nowrap;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .tab{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s}
 .tab:hover{background:var(--bg2)}.tab.on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
@@ -315,25 +315,12 @@ function parseCSV(text) {
     const cat  = (cols[ci]||'').replace(/^"|"$/g,'').trim();
     const desc = di >= 0 ? (cols[di]||'').replace(/^"|"$/g,'').trim() : '';
     let mo = 'Unknown';
-    // Use Tiller's pre-calculated "month" column if available (most reliable)
-    if (moi >= 0 && cols[moi]) {
-      const raw = (cols[moi]||'').replace(/^"|"$/g,'').trim();
-      // Tiller month column format: "6/1/2026" or "6/1/26"
-      const mdy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      const iso = raw.match(/^(\d{4})-(\d{2})/);
-      if (mdy) {
-        let yr = parseInt(mdy[3]);
-        if (yr < 100) yr += 2000;
-        mo = yr+'-'+String(parseInt(mdy[1])).padStart(2,'0');
-      } else if (iso) {
-        mo = iso[1]+'-'+iso[2];
-      }
-    }
-    // Fall back to date column if month column not available or empty
-    if (mo === 'Unknown' && dti >= 0) {
+    // Use DATE column (actual transaction date) - more accurate than Tiller's Month column
+    // Tiller's Month column reflects billing period which can differ from transaction date
+    if (dti >= 0) {
       const raw = (cols[dti]||'').replace(/^"|"$/g,'').trim();
       const mdy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const iso = raw.match(/^(\d{4})-(\d{2})/);
       if (mdy) {
         let yr = parseInt(mdy[3]);
         if (yr < 100) yr += 2000;
@@ -351,7 +338,8 @@ function parseCSV(text) {
 function processRows(rows, groupMap, inccList, colorMap) {
   const months = [...new Set(rows.map(r => r.mo))].sort();
   // Always include current month even if mid-month
-  const nowMo = new Date().toISOString().slice(0,7);
+  const now = new Date();
+  const nowMo = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   if (!months.includes(nowMo) && months.length > 0) months.push(nowMo);
   months.sort();
   const last12 = months.slice(-14), last6 = last12.slice(-6); // show last 14 months to include current partial month
