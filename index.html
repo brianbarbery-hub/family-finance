@@ -6,8 +6,8 @@
 <title>Barbery Family Finance Dashboard v3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root{--bg:#fff;--bg2:#f5f5f3;--bg3:#eeede9;--text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;--border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.2);--ok:#3a7d1e;--warn:#b06800;--danger:#c0392b;--ok-bg:#eaf3de;--warn-bg:#faeeda;--danger-bg:#fcebeb;--info:#185fa5;--info-bg:#e6f1fb;--info-bd:rgba(24,95,165,0.3);--brian:#1a6fb5;--brian-bg:#e8f2fc;--eliz:#7b3fa0;--eliz-bg:#f3ecfa;--stevens:#c05828;--stevens-bg:#fdf0ea;--r:10px;--rs:7px}
-@media(prefers-color-scheme:dark){:root{--bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;--text:#f0ede8;--text2:#a0a09a;--text3:#6a6a65;--border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.22);--ok:#8bc34a;--warn:#ffb74d;--danger:#ef5350;--ok-bg:#1a2d0a;--warn-bg:#2d1f00;--danger-bg:#2d0a0a;--info:#64b5f6;--info-bg:#0d2140;--info-bd:rgba(100,181,246,0.3);--brian:#64b5f6;--brian-bg:#0d2140;--eliz:#ce93d8;--eliz-bg:#1e0d28;--stevens:#ef9f27;--stevens-bg:#2d1800}}
+:root{--bg:#fff;--bg2:#f5f5f3;--bg3:#eeede9;--text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;--border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.2);--ok:#3a7d1e;--warn:#b06800;--danger:#c0392b;--ok-bg:#eaf3de;--warn-bg:#faeeda;--danger-bg:#fcebeb;--info:#185fa5;--info-bg:#e6f1fb;--info-bd:rgba(24,95,165,0.3);--brian:#1a6fb5;--brian-bg:#e8f2fc;--eliz:#7b3fa0;--eliz-bg:#f3ecfa;--stevens:#c05828;--stevens-bg:#fdf0ea;--balances:#185fa5;--balances-bg:#e6f1fb;--r:10px;--rs:7px}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;--text:#f0ede8;--text2:#a0a09a;--text3:#6a6a65;--border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.22);--ok:#8bc34a;--warn:#ffb74d;--danger:#ef5350;--ok-bg:#1a2d0a;--warn-bg:#2d1f00;--danger-bg:#2d0a0a;--info:#64b5f6;--info-bg:#0d2140;--info-bd:rgba(100,181,246,0.3);--brian:#64b5f6;--brian-bg:#0d2140;--eliz:#ce93d8;--eliz-bg:#1e0d28;--stevens:#ef9f27;--stevens-bg:#2d1800;--balances:#64b5f6;--balances-bg:#0d2140}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg3);color:var(--text);font-size:14px;line-height:1.5}
 .page{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
@@ -21,6 +21,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
 .vtab.on.household{color:#1a6fb5}
 .vtab.on.elizabeth{color:#7b3fa0}
 .vtab.on.stevens{color:#c05828}
+.vtab.on.balances{color:#185fa5}
 .hbtn{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer}
 .hbtn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
 .status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
@@ -92,6 +93,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
         <button class="vtab on household" onclick="switchView('household')">Household</button>
         <button class="vtab elizabeth" onclick="switchView('elizabeth')">Elizabeth</button>
         <button class="vtab stevens" onclick="switchView('stevens')">Stevens</button>
+        <button class="vtab balances" onclick="switchView('balances')">Balances</button>
       </div>
       <button class="hbtn active" id="btnExpenses" onclick="setPanel('expenses')">Expenses</button>
       <button class="hbtn" id="btnIncome" onclick="setPanel('income')">Income</button>
@@ -223,6 +225,28 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
     </div>
   </div>
 
+  <!-- BALANCES VIEW -->
+  <div id="view-balances" style="display:none">
+    <div class="view-banner" style="background:var(--balances-bg);color:var(--balances)">&#127974; Account Balances &mdash; Assets, Liabilities &amp; Net Worth</div>
+    <div id="bal-loader" class="loader"><div class="spinner"></div><div>Loading balances...</div></div>
+    <div id="bal-dash" style="display:none">
+      <!-- Net Worth banner -->
+      <div id="bal-networth" style="margin-bottom:12px"></div>
+      <!-- Assets & Liabilities side by side -->
+      <div class="g2" style="margin-bottom:12px">
+        <div class="card">
+          <div class="ct" style="color:#3a7d1e">&#11014; Assets</div>
+          <div id="bal-assets"></div>
+        </div>
+        <div class="card">
+          <div class="ct" style="color:#c0392b">&#11015; Liabilities</div>
+          <div id="bal-liabilities"></div>
+        </div>
+      </div>
+      <div class="note" id="bal-note"></div>
+    </div>
+  </div>
+
   <div class="footer" id="footer"></div>
 </div>
 
@@ -231,7 +255,8 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
 const URLS = {
   household: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNmRLEioA2e60NaW7QDj5dI8LLVNrDVRg05hLoPV1yj_M3HqgoYIHLOL_vhzYd8-hL3vz3puxedKEL/pub?gid=1433396870&single=true&output=csv",
   elizabeth: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMnKKCwaDu8D1DQ12Cpch4YELPynjmKzALv5CGteA3mhAlBiE-U0yMNKwUcKCX2iZNFJ7R3QBcnHeB/pub?gid=553449824&single=true&output=csv",
-  stevens:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7bLqn_LdPB9RjKpuLaqUSScc4S4r3qIAi5bFgd5oLOkDLMgqkjgvIhQ5TAxQ8WE4hkLn8LV7a-SwW/pub?gid=1957535784&single=true&output=csv"
+  stevens:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7bLqn_LdPB9RjKpuLaqUSScc4S4r3qIAi5bFgd5oLOkDLMgqkjgvIhQ5TAxQ8WE4hkLn8LV7a-SwW/pub?gid=1957535784&single=true&output=csv",
+  balances:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNmRLEioA2e60NaW7QDj5dI8LLVNrDVRg05hLoPV1yj_M3HqgoYIHLOL_vhzYd8-hL3vz3puxedKEL/pub?gid=12547541&single=true&output=csv"
 };
 
 // ── CATEGORY MAPS ─────────────────────────────────────────────────────────────
@@ -494,6 +519,7 @@ function switchView(view) {
     el('view-'+v).style.display = v===view ? '' : 'none';
     document.querySelector('.vtab.'+v).className = 'vtab '+v+(v===view?' on':'');
   });
+  if (v === 'balances') { fetchBalances(); return; }
   const s = STATE[view];
   if (!s.loaded) {
     fetchView(view);
@@ -719,6 +745,96 @@ function buildIncomeView(view) {
 
 function toggleDrill(view, g) { const s=STATE[view]; s.activeDrill=s.activeDrill===g?null:g; buildGroups(view); buildDrill(view); buildTrend(view); buildTx(view); }
 function clearDrill(p)       { const view=Object.keys(PREFIX).find(k=>PREFIX[k]===p); const s=STATE[view]; s.activeDrill=null; buildGroups(view); buildDrill(view); buildTrend(view); buildTx(view); }
+
+// ── BALANCES ─────────────────────────────────────────────────────────────────
+async function fetchBalances() {
+  el('bal-loader').style.display = 'flex';
+  el('bal-dash').style.display = 'none';
+  setStatus('loading', 'Loading balances...');
+  try {
+    const res = await fetch(URLS.balances, {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    console.log('Balance CSV preview:', text.slice(0,300));
+    const lines = text.trim().split('
+');
+    // Parse helper
+    function pLine(line) {
+      const c = []; let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') { inQ = !inQ; }
+        else if (line[i] === ',' && !inQ) { c.push(cur.replace(/^"|"$/g,'').trim()); cur = ''; }
+        else { cur += line[i]; }
+      }
+      c.push(cur.replace(/^"|"$/g,'').trim());
+      return c;
+    }
+    // Two sections in CSV: sorted assets then sorted liabilities
+    // Each section has its own header row with account/balance columns
+    const useAssets = [], useLiabs = [];
+    let section = null, ci = {};
+    lines.forEach(line => {
+      if (!line.trim()) return;
+      const low = line.toLowerCase();
+      if (low.includes('sorted asset')) { section = 'asset'; ci = {}; return; }
+      if (low.includes('sorted liab'))  { section = 'liab';  ci = {}; return; }
+      if (low.includes('account') && low.includes('balance')) {
+        const h = pLine(line).map(x => x.toLowerCase());
+        ci.acct = h.findIndex(x => x === 'account' || x.includes('account'));
+        ci.upd  = h.findIndex(x => x.includes('updated') || x.includes('last'));
+        ci.bal  = h.findIndex(x => x === 'balance' || x.includes('balance'));
+        console.log('Section', section, 'cols:', ci, 'headers:', h);
+        return;
+      }
+      if (!section || ci.bal === undefined || ci.bal < 0) return;
+      const c   = pLine(line);
+      const bal = parseFloat((c[ci.bal]||'').replace(/[$, ]/g,''));
+      const acct = (c[ci.acct]||'').trim();
+      const upd  = (c[ci.upd]||'').trim();
+      if (acct && !isNaN(bal) && bal !== 0) {
+        const entry = {account:acct, balance:Math.abs(bal), updated:upd};
+        if (section === 'asset') useAssets.push(entry);
+        else useLiabs.push(entry);
+      }
+    });
+    console.log('Assets:', useAssets.length, useAssets);
+    console.log('Liabilities:', useLiabs.length, useLiabs);
+    const totalAssets = Math.round(useAssets.reduce((a,b) => a+b.balance, 0)*100)/100;
+    const totalLiabs  = Math.round(Math.abs(useLiabs.reduce((a,b) => a+b.balance, 0))*100)/100;
+    const netWorth    = totalAssets - totalLiabs;
+    // Render net worth banner
+    el('bal-networth').innerHTML = '<div style="background:'+(netWorth>=0?'var(--ok-bg)':'var(--danger-bg)')+';border-radius:var(--r);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:13px;font-weight:600;color:'+(netWorth>=0?'var(--ok)':'var(--danger)')+'">NET WORTH</div>'
+      +'<div style="font-size:28px;font-weight:700;color:'+(netWorth>=0?'var(--ok)':'var(--danger)')+'">'+fmt(netWorth)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2)"><span style="color:var(--ok)">Assets '+fmt(totalAssets)+'</span> &mdash; <span style="color:var(--danger)">Liabilities '+fmt(totalLiabs)+'</span></div>'
+      +'</div>';
+    // Render assets
+    function renderAccounts(arr, elId) {
+      el(elId).innerHTML = arr.length === 0 ? '<div style="font-size:12px;color:var(--text3);padding:8px 0">None found</div>'
+        : arr.map(a => '<div class="trow"><div class="trow-l"><div class="trow-desc">'+a.account+'</div>'
+            +'<div class="trow-cat">'+a.updated+'</div></div>'
+            +'<div class="trow-amt">'+fmt(Math.abs(a.balance))+'</div></div>'
+          ).join('');
+    }
+    renderAccounts(useAssets, 'bal-assets');
+    renderAccounts(useLiabs,  'bal-liabilities');
+    const stale = accounts.filter(a => a.updated && (a.updated.includes('day') && parseInt(a.updated) > 5));
+    el('bal-note').textContent = 'As of July 6, 2026 · ' + accounts.length + ' accounts · '+(stale.length>0?stale.length+' accounts may be stale (5+ days old)':'All accounts recently updated');
+    const now = new Date();
+    const ts = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    setStatus('live', 'Live — '+ts);
+    el('bal-loader').style.display = 'none';
+    el('bal-dash').style.display = '';
+  } catch(err) {
+    setStatus('error', 'Balances load failed');
+    el('bal-loader').innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">'
+      +'<div style="font-size:24px;margin-bottom:12px">&#9888;</div>'
+      +'<div style="font-weight:600;margin-bottom:8px">Could not load balances</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-bottom:16px">'+err.message+'</div>'
+      +'<button onclick="fetchBalances()" style="padding:6px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-size:12px">Try again</button>'
+      +'</div>';
+  }
+}
 
 // ── YTD ──────────────────────────────────────────────────────────────────────
 let ytdMode = false;
