@@ -515,11 +515,11 @@ function viewLabel(v) {
 // ── UI ────────────────────────────────────────────────────────────────────────
 function switchView(view) {
   activeView = view;
-  ['household','elizabeth','stevens'].forEach(v => {
-    el('view-'+v).style.display = v===view ? '' : 'none';
-    document.querySelector('.vtab.'+v).className = 'vtab '+v+(v===view?' on':'');
+  ['household','elizabeth','stevens','balances'].forEach(tab => {
+    el('view-'+tab).style.display = tab===view ? '' : 'none';
+    document.querySelector('.vtab.'+tab).className = 'vtab '+tab+(tab===view?' on':'');
   });
-  if (v === 'balances') { fetchBalances(); return; }
+  if (view === 'balances') { fetchBalances(); return; }
   const s = STATE[view];
   if (!s.loaded) {
     fetchView(view);
@@ -533,6 +533,7 @@ function switchView(view) {
 
 function setPanel(panel) {
   const view = activeView;
+  if (view === 'balances') return; // balances has no expense/income panels
   const p    = PREFIX[view];
   const s    = STATE[view];
   s.panel    = panel;
