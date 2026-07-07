@@ -756,8 +756,7 @@ async function fetchBalances() {
     if (!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
     console.log('Balance CSV preview:', text.slice(0,300));
-    const lines = text.trim().split('
-');
+    const lines = text.trim().split('\n');
     // Parse helper
     function pLine(line) {
       const c = []; let cur = '', inQ = false;
