@@ -484,8 +484,7 @@ async function fetchView(view) {
     const range = mos.length ? mos[0]+' to '+mos[mos.length-1] : '';
     el('dataNote').textContent = viewLabel(view)+' · '+rows.length.toLocaleString()+' transactions'+(range?' · '+range:'')+' · Live from Google Sheets';
 
-    const now = new Date();
-    const ts  = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const ts  = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     setStatus('live', 'Live — '+ts);
     el('footer').textContent = 'Last synced: '+ts;
 
@@ -843,8 +842,10 @@ async function fetchBalances() {
     }
     renderAccounts(useAssets, 'bal-assets');
     renderAccounts(useLiabs,  'bal-liabilities');
-    const stale = accounts.filter(a => a.updated && (a.updated.includes('day') && parseInt(a.updated) > 5));
-    el('bal-note').textContent = 'As of July 6, 2026 · ' + accounts.length + ' accounts · '+(stale.length>0?stale.length+' accounts may be stale (5+ days old)':'All accounts recently updated');
+    const allAccounts = useAssets.concat(useLiabs);
+    const stale = allAccounts.filter(a => a.updated && (a.updated.includes('day') && parseInt(a.updated) > 5));
+    const now2 = new Date();
+    el('bal-note').textContent = now2.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+' · '+allAccounts.length+' accounts · '+(stale.length>0?stale.length+' accounts may be stale (5+ days old)':'All accounts recently updated');
     const now = new Date();
     const ts = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     setStatus('live', 'Live — '+ts);
