@@ -756,10 +756,12 @@ async function fetchBalances() {
     const res = await fetch(URLS.balances, {cache:'no-store'});
     if (!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
-    console.log('Balance CSV preview:', text.slice(0,300));
-    const lines = text.trim().split('\n');
-    // Parse helper
-    function pLine(line) {
+    console.log('Balance CSV preview:', text.slice(0,400));
+    // The Balances sheet CSV has all data on rows with multiple columns
+    // Parse all rows first
+    const allRows = [];
+    const rawLines = text.trim().split('\n');
+    function pCols(line) {
       const c = []; let cur = '', inQ = false;
       for (let i = 0; i < line.length; i++) {
         if (line[i] === '"') { inQ = !inQ; }
@@ -769,34 +771,57 @@ async function fetchBalances() {
       c.push(cur.replace(/^"|"$/g,'').trim());
       return c;
     }
-    // Two sections in CSV: sorted assets then sorted liabilities
-    // Each section has its own header row with account/balance columns
+    rawLines.forEach(line => { if (line.trim()) allRows.push(pCols(line)); });
+    // Find header rows by looking for 'account' and 'balance' in same row
+    // Assets section: cols J-O (indices vary), Liabilities: cols Q-V
+    // Strategy: find rows where 'account' column has recognizable account names
+    // and 'balance' column has dollar amounts
     const useAssets = [], useLiabs = [];
-    let section = null, ci = {};
-    lines.forEach(line => {
-      if (!line.trim()) return;
-      const low = line.toLowerCase();
-      if (low.includes('sorted asset')) { section = 'asset'; ci = {}; return; }
-      if (low.includes('sorted liab'))  { section = 'liab';  ci = {}; return; }
-      if (low.includes('account') && low.includes('balance')) {
-        const h = pLine(line).map(x => x.toLowerCase());
-        ci.acct = h.findIndex(x => x === 'account' || x.includes('account'));
-        ci.upd  = h.findIndex(x => x.includes('updated') || x.includes('last'));
-        ci.bal  = h.findIndex(x => x === 'balance' || x.includes('balance'));
-        console.log('Section', section, 'cols:', ci, 'headers:', h);
-        return;
-      }
-      if (!section || ci.bal === undefined || ci.bal < 0) return;
-      const c   = pLine(line);
-      const bal = parseFloat((c[ci.bal]||'').replace(/[$, ]/g,''));
-      const acct = (c[ci.acct]||'').trim();
-      const upd  = (c[ci.upd]||'').trim();
-      if (acct && !isNaN(bal) && bal !== 0) {
-        const entry = {account:acct, balance:Math.abs(bal), updated:upd};
-        if (section === 'asset') useAssets.push(entry);
-        else useLiabs.push(entry);
+    // Find the two header rows
+    let assetHdr = -1, liabHdr = -1;
+    allRows.forEach((row, i) => {
+      const low = row.map(c => c.toLowerCase());
+      // Look for row containing 'account' and 'balance' and 'last updated'
+      if (low.includes('account') && low.includes('balance') && low.includes('last updated')) {
+        if (assetHdr < 0) assetHdr = i;
+        else liabHdr = i;
       }
     });
+    console.log('Asset header row:', assetHdr, 'Liab header row:', liabHdr);
+    // Get column indices from asset header row
+    function getCols(row) {
+      const low = row.map(c => c.toLowerCase());
+      return {
+        acct: low.findIndex(c => c === 'account'),
+        upd:  low.findIndex(c => c === 'last updated'),
+        bal:  low.findIndex(c => c === 'balance')
+      };
+    }
+    if (assetHdr >= 0) {
+      const ac = getCols(allRows[assetHdr]);
+      console.log('Section asset cols:', ac, 'headers:', allRows[assetHdr]);
+      allRows.slice(assetHdr+1).forEach(row => {
+        if (liabHdr > 0 && allRows.indexOf(row) >= liabHdr) return;
+        const acct = (row[ac.acct]||'').trim();
+        const bal  = parseFloat((row[ac.bal]||'').replace(/[$, ]/g,''));
+        const upd  = (row[ac.upd]||'').trim();
+        if (acct && acct !== 'Account' && !isNaN(bal) && bal > 0) {
+          useAssets.push({account:acct, balance:bal, updated:upd});
+        }
+      });
+    }
+    if (liabHdr >= 0) {
+      const lc = getCols(allRows[liabHdr]);
+      console.log('Section liab cols:', lc, 'headers:', allRows[liabHdr]);
+      allRows.slice(liabHdr+1).forEach(row => {
+        const acct = (row[lc.acct]||'').trim();
+        const bal  = parseFloat((row[lc.bal]||'').replace(/[$, ]/g,''));
+        const upd  = (row[lc.upd]||'').trim();
+        if (acct && acct !== 'Account' && !isNaN(bal) && bal > 0) {
+          useLiabs.push({account:acct, balance:bal, updated:upd});
+        }
+      });
+    }
     console.log('Assets:', useAssets.length, useAssets);
     console.log('Liabilities:', useLiabs.length, useLiabs);
     const totalAssets = Math.round(useAssets.reduce((a,b) => a+b.balance, 0)*100)/100;
