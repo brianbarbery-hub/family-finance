@@ -484,7 +484,8 @@ async function fetchView(view) {
     const range = mos.length ? mos[0]+' to '+mos[mos.length-1] : '';
     el('dataNote').textContent = viewLabel(view)+' · '+rows.length.toLocaleString()+' transactions'+(range?' · '+range:'')+' · Live from Google Sheets';
 
-    const ts  = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const now = new Date();
+    const ts  = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     setStatus('live', 'Live — '+ts);
     el('footer').textContent = 'Last synced: '+ts;
 
