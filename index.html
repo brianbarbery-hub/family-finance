@@ -91,7 +91,7 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
     <div class="hdr-right">
       <div class="view-toggle">
         <button class="vtab on household" onclick="switchView('household')">Household</button>
-        <button class="vtab elizabeth" onclick="switchView('elizabeth')">Elizabeth</button>
+        <button class="vtab elizabeth" onclick="switchView('elizabeth')">Main Street</button>
         <button class="vtab stevens" onclick="switchView('stevens')">Stevens</button>
         <button class="vtab balances" onclick="switchView('balances')">Balances</button>
       </div>
@@ -757,10 +757,8 @@ async function fetchBalances() {
     if (!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
     console.log('Balance CSV preview:', text.slice(0,400));
-    // The Balances sheet CSV has all data on rows with multiple columns
-    // Parse all rows first
-    const allRows = [];
     const rawLines = text.trim().split('\n');
+    // Parse CSV line handling quoted fields
     function pCols(line) {
       const c = []; let cur = '', inQ = false;
       for (let i = 0; i < line.length; i++) {
@@ -771,54 +769,51 @@ async function fetchBalances() {
       c.push(cur.replace(/^"|"$/g,'').trim());
       return c;
     }
-    rawLines.forEach(line => { if (line.trim()) allRows.push(pCols(line)); });
-    // Find header rows by looking for 'account' and 'balance' in same row
-    // Assets section: cols J-O (indices vary), Liabilities: cols Q-V
-    // Strategy: find rows where 'account' column has recognizable account names
-    // and 'balance' column has dollar amounts
-    const useAssets = [], useLiabs = [];
-    // Find the two header rows
-    let assetHdr = -1, liabHdr = -1;
+    const allRows = rawLines.filter(l => l.trim()).map(l => pCols(l));
+    // Find header row - contains 'account', 'balance', 'last updated', 'group'
+    let hdrIdx = -1, ci = {};
     allRows.forEach((row, i) => {
       const low = row.map(c => c.toLowerCase());
-      // Look for row containing 'account' and 'balance' and 'last updated'
-      if (low.includes('account') && low.includes('balance') && low.includes('last updated')) {
-        if (assetHdr < 0) assetHdr = i;
-        else liabHdr = i;
+      if (low.includes('account') && low.includes('balance') && low.includes('group')) {
+        if (hdrIdx < 0) { // use first header found (asset section)
+          hdrIdx = i;
+          ci.grp  = low.findIndex(c => c === 'group');
+          ci.acct = low.findIndex(c => c === 'account');
+          ci.upd  = low.findIndex(c => c === 'last updated');
+          ci.bal  = low.findIndex(c => c === 'balance');
+          console.log('Header row:', i, 'cols:', ci, 'headers:', row);
+        }
       }
     });
-    console.log('Asset header row:', assetHdr, 'Liab header row:', liabHdr);
-    // Get column indices from asset header row
-    function getCols(row) {
-      const low = row.map(c => c.toLowerCase());
-      return {
-        acct: low.findIndex(c => c === 'account'),
-        upd:  low.findIndex(c => c === 'last updated'),
-        bal:  low.findIndex(c => c === 'balance')
-      };
-    }
-    if (assetHdr >= 0) {
-      const ac = getCols(allRows[assetHdr]);
-      console.log('Section asset cols:', ac, 'headers:', allRows[assetHdr]);
-      allRows.slice(assetHdr+1).forEach(row => {
-        if (liabHdr > 0 && allRows.indexOf(row) >= liabHdr) return;
-        const acct = (row[ac.acct]||'').trim();
-        const bal  = parseFloat((row[ac.bal]||'').replace(/[$, ]/g,''));
-        const upd  = (row[ac.upd]||'').trim();
-        if (acct && acct !== 'Account' && !isNaN(bal) && bal > 0) {
-          useAssets.push({account:acct, balance:bal, updated:upd});
-        }
+    const useAssets = [], useLiabs = [];
+    if (hdrIdx >= 0) {
+      allRows.slice(hdrIdx+1).forEach(row => {
+        const grp  = (row[ci.grp]||'').toLowerCase();
+        const acct = (row[ci.acct]||'').trim();
+        const upd  = (row[ci.upd]||'').trim();
+        const bal  = parseFloat((row[ci.bal]||'').replace(/[$, ]/g,''));
+        if (!acct || acct === 'Account' || isNaN(bal) || bal === 0) return;
+        const entry = {account:acct, balance:Math.abs(bal), updated:upd};
+        if (grp.includes('liab') || grp.includes('credit')) useLiabs.push(entry);
+        else if (bal > 0) useAssets.push(entry);
       });
-    }
-    if (liabHdr >= 0) {
-      const lc = getCols(allRows[liabHdr]);
-      console.log('Section liab cols:', lc, 'headers:', allRows[liabHdr]);
-      allRows.slice(liabHdr+1).forEach(row => {
-        const acct = (row[lc.acct]||'').trim();
-        const bal  = parseFloat((row[lc.bal]||'').replace(/[$, ]/g,''));
-        const upd  = (row[lc.upd]||'').trim();
-        if (acct && acct !== 'Account' && !isNaN(bal) && bal > 0) {
-          useLiabs.push({account:acct, balance:bal, updated:upd});
+      // Also check liability section - it has its own header row further right in same rows
+      // Look for 'group' appearing again in same row as 'account' in later columns
+      allRows.slice(hdrIdx+1).forEach(row => {
+        // Check right-side columns for liability data (columns Q-V = offset ~8 from asset cols)
+        const offset = ci.grp + 8; // approximate offset to liability section
+        if (row.length <= offset) return;
+        const liabRow = row.slice(offset);
+        const grp  = (liabRow[2]||'').toLowerCase(); // group is 3rd col in liab section
+        const acct = (liabRow[3]||'').trim();        // account is 4th col
+        const upd  = (liabRow[4]||'').trim();        // last updated is 5th col
+        const bal  = parseFloat((liabRow[5]||'').replace(/[$, ]/g,''));
+        if (!acct || isNaN(bal) || bal === 0) return;
+        if (grp.includes('liab') || grp.includes('credit')) {
+          // Avoid duplicates
+          if (!useLiabs.find(a => a.account === acct)) {
+            useLiabs.push({account:acct, balance:Math.abs(bal), updated:upd});
+          }
         }
       });
     }
