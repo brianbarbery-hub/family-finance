@@ -833,11 +833,19 @@ async function fetchBalances() {
       +'</div>';
     // Render assets
     function renderAccounts(arr, elId) {
-      el(elId).innerHTML = arr.length === 0 ? '<div style="font-size:12px;color:var(--text3);padding:8px 0">None found</div>'
-        : arr.map(a => '<div class="trow"><div class="trow-l"><div class="trow-desc">'+a.account+'</div>'
-            +'<div class="trow-cat">'+a.updated+'</div></div>'
-            +'<div class="trow-amt">'+fmt(Math.abs(a.balance))+'</div></div>'
-          ).join('');
+      if (arr.length === 0) {
+        el(elId).innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">None found</div>';
+        return;
+      }
+      const total = arr.reduce((a,b) => a + b.balance, 0);
+      const rows  = arr.map(a => '<div class="trow"><div class="trow-l"><div class="trow-desc">'+a.account+'</div>'
+          +'<div class="trow-cat">'+a.updated+'</div></div>'
+          +'<div class="trow-amt">'+fmt(a.balance)+'</div></div>'
+        ).join('');
+      const totalRow = '<div style="display:flex;justify-content:space-between;align-items:center;'
+        +'padding:8px 0;margin-top:4px;border-top:1.5px solid var(--border2);font-weight:600;font-size:13px">'
+        +'<div>Total</div><div style="font-variant-numeric:tabular-nums">'+fmt(total)+'</div></div>';
+      el(elId).innerHTML = rows + totalRow;
     }
     renderAccounts(useAssets, 'bal-assets');
     renderAccounts(useLiabs,  'bal-liabilities');
