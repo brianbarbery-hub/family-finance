@@ -787,32 +787,35 @@ async function fetchBalances() {
     });
     const useAssets = [], useLiabs = [];
     if (hdrIdx >= 0) {
+      const hdrRow = allRows[hdrIdx];
+      const low    = hdrRow.map(c => c.toLowerCase());
+      // Find the SECOND occurrence of 'group' in the header row = liability section start
+      const firstGrp  = low.indexOf('group');
+      const secondGrp = low.indexOf('group', firstGrp+1);
+      const li = secondGrp >= 0 ? {
+        grp:  secondGrp,
+        acct: low.indexOf('account', secondGrp),
+        upd:  low.indexOf('last updated', secondGrp),
+        bal:  low.indexOf('balance', secondGrp)
+      } : null;
+      console.log('Asset cols:', ci, 'Liab cols:', li);
       allRows.slice(hdrIdx+1).forEach(row => {
-        const grp  = (row[ci.grp]||'').toLowerCase();
-        const acct = (row[ci.acct]||'').trim();
-        const upd  = (row[ci.upd]||'').trim();
-        const bal  = parseFloat((row[ci.bal]||'').replace(/[$, ]/g,''));
-        if (!acct || acct === 'Account' || isNaN(bal) || bal === 0) return;
-        const entry = {account:acct, balance:Math.abs(bal), updated:upd};
-        if (grp.includes('liab') || grp.includes('credit')) useLiabs.push(entry);
-        else if (bal > 0) useAssets.push(entry);
-      });
-      // Also check liability section - it has its own header row further right in same rows
-      // Look for 'group' appearing again in same row as 'account' in later columns
-      allRows.slice(hdrIdx+1).forEach(row => {
-        // Check right-side columns for liability data (columns Q-V = offset ~8 from asset cols)
-        const offset = ci.grp + 8; // approximate offset to liability section
-        if (row.length <= offset) return;
-        const liabRow = row.slice(offset);
-        const grp  = (liabRow[2]||'').toLowerCase(); // group is 3rd col in liab section
-        const acct = (liabRow[3]||'').trim();        // account is 4th col
-        const upd  = (liabRow[4]||'').trim();        // last updated is 5th col
-        const bal  = parseFloat((liabRow[5]||'').replace(/[$, ]/g,''));
-        if (!acct || isNaN(bal) || bal === 0) return;
-        if (grp.includes('liab') || grp.includes('credit')) {
-          // Avoid duplicates
-          if (!useLiabs.find(a => a.account === acct)) {
-            useLiabs.push({account:acct, balance:Math.abs(bal), updated:upd});
+        // Parse asset columns
+        const aGrp  = (row[ci.grp]||'').toLowerCase();
+        const aAcct = (row[ci.acct]||'').trim();
+        const aUpd  = (row[ci.upd]||'').trim();
+        const aBal  = parseFloat((row[ci.bal]||'').replace(/[$, ]/g,''));
+        if (aAcct && aAcct !== 'Account' && !isNaN(aBal) && aBal > 0) {
+          if (!aGrp.includes('liab')) useAssets.push({account:aAcct, balance:aBal, updated:aUpd});
+        }
+        // Parse liability columns
+        if (li) {
+          const lGrp  = (row[li.grp]||'').toLowerCase();
+          const lAcct = (row[li.acct]||'').trim();
+          const lUpd  = (row[li.upd]||'').trim();
+          const lBal  = parseFloat((row[li.bal]||'').replace(/[$, ]/g,''));
+          if (lAcct && lAcct !== 'Account' && !isNaN(lBal) && lBal > 0) {
+            useLiabs.push({account:lAcct, balance:lBal, updated:lUpd});
           }
         }
       });
