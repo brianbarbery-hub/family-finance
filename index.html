@@ -230,18 +230,26 @@ h1{font-size:19px;font-weight:600;letter-spacing:-.3px}
     <div class="view-banner" style="background:var(--balances-bg);color:var(--balances)">&#127974; Account Balances &mdash; Assets, Liabilities &amp; Net Worth</div>
     <div id="bal-loader" class="loader"><div class="spinner"></div><div>Loading balances...</div></div>
     <div id="bal-dash" style="display:none">
-      <!-- Net Worth banner -->
-      <div id="bal-networth" style="margin-bottom:12px"></div>
-      <!-- Assets & Liabilities side by side -->
-      <div class="g2" style="margin-bottom:12px">
-        <div class="card">
-          <div class="ct" style="color:#3a7d1e">&#11014; Assets</div>
-          <div id="bal-assets"></div>
-        </div>
-        <div class="card">
-          <div class="ct" style="color:#c0392b">&#11015; Liabilities</div>
-          <div id="bal-liabilities"></div>
-        </div>
+      <!-- Household -->
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brian);margin-bottom:8px">&#127968; Barbery Household</div>
+      <div id="bal-networth" style="margin-bottom:10px"></div>
+      <div class="g2" style="margin-bottom:16px">
+        <div class="card"><div class="ct" style="color:#3a7d1e">&#11014; Assets</div><div id="bal-assets"></div></div>
+        <div class="card"><div class="ct" style="color:#c0392b">&#11015; Liabilities</div><div id="bal-liabilities"></div></div>
+      </div>
+      <!-- Main Street Travel -->
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--eliz);margin-bottom:8px">&#128188; Main Street Travel</div>
+      <div id="bal-el-networth" style="margin-bottom:10px"></div>
+      <div class="g2" style="margin-bottom:16px">
+        <div class="card"><div class="ct" style="color:#3a7d1e">&#11014; Assets</div><div id="bal-el-assets"></div></div>
+        <div class="card"><div class="ct" style="color:#c0392b">&#11015; Liabilities</div><div id="bal-el-liabilities"></div></div>
+      </div>
+      <!-- Stevens -->
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--stevens);margin-bottom:8px">&#10084; Stevens</div>
+      <div id="bal-st-networth" style="margin-bottom:10px"></div>
+      <div class="g2" style="margin-bottom:16px">
+        <div class="card"><div class="ct" style="color:#3a7d1e">&#11014; Assets</div><div id="bal-st-assets"></div></div>
+        <div class="card"><div class="ct" style="color:#c0392b">&#11015; Liabilities</div><div id="bal-st-liabilities"></div></div>
       </div>
       <div class="note" id="bal-note"></div>
     </div>
@@ -256,7 +264,9 @@ const URLS = {
   household: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNmRLEioA2e60NaW7QDj5dI8LLVNrDVRg05hLoPV1yj_M3HqgoYIHLOL_vhzYd8-hL3vz3puxedKEL/pub?gid=1433396870&single=true&output=csv",
   elizabeth: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMnKKCwaDu8D1DQ12Cpch4YELPynjmKzALv5CGteA3mhAlBiE-U0yMNKwUcKCX2iZNFJ7R3QBcnHeB/pub?gid=553449824&single=true&output=csv",
   stevens:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7bLqn_LdPB9RjKpuLaqUSScc4S4r3qIAi5bFgd5oLOkDLMgqkjgvIhQ5TAxQ8WE4hkLn8LV7a-SwW/pub?gid=1957535784&single=true&output=csv",
-  balances:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNmRLEioA2e60NaW7QDj5dI8LLVNrDVRg05hLoPV1yj_M3HqgoYIHLOL_vhzYd8-hL3vz3puxedKEL/pub?gid=12547541&single=true&output=csv"
+  balances:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNmRLEioA2e60NaW7QDj5dI8LLVNrDVRg05hLoPV1yj_M3HqgoYIHLOL_vhzYd8-hL3vz3puxedKEL/pub?gid=12547541&single=true&output=csv",
+  balances_el: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMnKKCwaDu8D1DQ12Cpch4YELPynjmKzALv5CGteA3mhAlBiE-U0yMNKwUcKCX2iZNFJ7R3QBcnHeB/pub?gid=1857605865&single=true&output=csv",
+  balances_st: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7bLqn_LdPB9RjKpuLaqUSScc4S4r3qIAi5bFgd5oLOkDLMgqkjgvIhQ5TAxQ8WE4hkLn8LV7a-SwW/pub?gid=77967194&single=true&output=csv"
 };
 
 // ── CATEGORY MAPS ─────────────────────────────────────────────────────────────
@@ -748,14 +758,84 @@ function toggleDrill(view, g) { const s=STATE[view]; s.activeDrill=s.activeDrill
 function clearDrill(p)       { const view=Object.keys(PREFIX).find(k=>PREFIX[k]===p); const s=STATE[view]; s.activeDrill=null; buildGroups(view); buildDrill(view); buildTrend(view); buildTx(view); }
 
 // ── BALANCES ─────────────────────────────────────────────────────────────────
+function parseBalanceCSV(text) {
+  if (!text || !text.trim()) return {assets:[], liabs:[]};
+  const rawLines = text.trim().split('\n');
+  function pCols(line) {
+    const c = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { c.push(cur.replace(/^"|"$/g,'').trim()); cur = ''; }
+      else { cur += line[i]; }
+    }
+    c.push(cur.replace(/^"|"$/g,'').trim());
+    return c;
+  }
+  const allRows = rawLines.filter(l => l.trim()).map(l => pCols(l));
+  let hdrIdx = -1, ci = {};
+  allRows.forEach((row, i) => {
+    const low = row.map(c => c.toLowerCase());
+    if (low.includes('account') && low.includes('balance') && low.includes('group')) {
+      if (hdrIdx < 0) {
+        hdrIdx = i;
+        ci.grp  = low.indexOf('group');
+        ci.acct = low.indexOf('account');
+        ci.upd  = low.indexOf('last updated');
+        ci.bal  = low.indexOf('balance');
+        const secondGrp = low.indexOf('group', ci.grp+1);
+        ci.lGrp  = secondGrp >= 0 ? secondGrp : -1;
+        ci.lAcct = secondGrp >= 0 ? low.indexOf('account', secondGrp) : -1;
+        ci.lUpd  = secondGrp >= 0 ? low.indexOf('last updated', secondGrp) : -1;
+        ci.lBal  = secondGrp >= 0 ? low.indexOf('balance', secondGrp) : -1;
+      }
+    }
+  });
+  const assets = [], liabs = [];
+  if (hdrIdx >= 0) {
+    allRows.slice(hdrIdx+1).forEach(row => {
+      const aGrp = (row[ci.grp]||'').toLowerCase();
+      const aAcc = (row[ci.acct]||'').trim();
+      const aUpd = (row[ci.upd]||'').trim();
+      const aBal = parseFloat((row[ci.bal]||'').replace(/[$, ]/g,''));
+      if (aAcc && aAcc !== 'Account' && !isNaN(aBal) && aBal > 0 && !aGrp.includes('liab'))
+        assets.push({account:aAcc, balance:aBal, updated:aUpd});
+      if (ci.lGrp >= 0) {
+        const lGrp = (row[ci.lGrp]||'').toLowerCase();
+        const lAcc = (row[ci.lAcct]||'').trim();
+        const lUpd = (row[ci.lUpd]||'').trim();
+        const lBal = parseFloat((row[ci.lBal]||'').replace(/[$, ]/g,''));
+        if (lAcc && lAcc !== 'Account' && !isNaN(lBal) && lBal > 0)
+          liabs.push({account:lAcc, balance:lBal, updated:lUpd});
+      }
+    });
+  }
+  return {assets, liabs};
+}
+
+function renderNetWorth(assets, liabs, elId) {
+  const totalA = Math.round(assets.reduce((a,b) => a+b.balance, 0)*100)/100;
+  const totalL = Math.round(liabs.reduce((a,b)  => a+b.balance, 0)*100)/100;
+  const nw     = totalA - totalL;
+  el(elId).innerHTML = '<div style="background:'+(nw>=0?'var(--ok-bg)':'var(--danger-bg)')+';border-radius:var(--r);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:12px;font-weight:600;color:'+(nw>=0?'var(--ok)':'var(--danger)')+'">NET WORTH</div>'
+    +'<div style="font-size:24px;font-weight:700;color:'+(nw>=0?'var(--ok)':'var(--danger)')+'">'+fmt(nw)+'</div>'
+    +'<div style="font-size:11px;color:var(--text2)"><span style="color:var(--ok)">Assets '+fmt(totalA)+'</span> &mdash; <span style="color:var(--danger)">Liabilities '+fmt(totalL)+'</span></div>'
+    +'</div>';
+}
+
 async function fetchBalances() {
   el('bal-loader').style.display = 'flex';
   el('bal-dash').style.display = 'none';
   setStatus('loading', 'Loading balances...');
   try {
-    const res = await fetch(URLS.balances, {cache:'no-store'});
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const text = await res.text();
+    const [res, resEl, resSt] = await Promise.all([
+      fetch(URLS.balances,    {cache:'no-store'}),
+      fetch(URLS.balances_el, {cache:'no-store'}),
+      fetch(URLS.balances_st, {cache:'no-store'})
+    ]);
+    const text   = await res.text();
+    const textEl = resEl.ok ? await resEl.text() : '';
+    const textSt = resSt.ok ? await resSt.text() : '';
     console.log('Balance CSV preview:', text.slice(0,400));
     const rawLines = text.trim().split('\n');
     // Parse CSV line handling quoted fields
@@ -826,11 +906,7 @@ async function fetchBalances() {
     const totalLiabs  = Math.round(Math.abs(useLiabs.reduce((a,b) => a+b.balance, 0))*100)/100;
     const netWorth    = totalAssets - totalLiabs;
     // Render net worth banner
-    el('bal-networth').innerHTML = '<div style="background:'+(netWorth>=0?'var(--ok-bg)':'var(--danger-bg)')+';border-radius:var(--r);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">'
-      +'<div style="font-size:13px;font-weight:600;color:'+(netWorth>=0?'var(--ok)':'var(--danger)')+'">NET WORTH</div>'
-      +'<div style="font-size:28px;font-weight:700;color:'+(netWorth>=0?'var(--ok)':'var(--danger)')+'">'+fmt(netWorth)+'</div>'
-      +'<div style="font-size:12px;color:var(--text2)"><span style="color:var(--ok)">Assets '+fmt(totalAssets)+'</span> &mdash; <span style="color:var(--danger)">Liabilities '+fmt(totalLiabs)+'</span></div>'
-      +'</div>';
+    renderNetWorth(useAssets, useLiabs, 'bal-networth');
     // Render assets
     function renderAccounts(arr, elId) {
       if (arr.length === 0) {
@@ -849,6 +925,18 @@ async function fetchBalances() {
     }
     renderAccounts(useAssets, 'bal-assets');
     renderAccounts(useLiabs,  'bal-liabilities');
+
+    // Parse and render Elizabeth balances
+    const {assets:elAssets, liabs:elLiabs} = parseBalanceCSV(textEl);
+    renderNetWorth(elAssets, elLiabs, 'bal-el-networth');
+    renderAccounts(elAssets, 'bal-el-assets');
+    renderAccounts(elLiabs,  'bal-el-liabilities');
+
+    // Parse and render Stevens balances
+    const {assets:stAssets, liabs:stLiabs} = parseBalanceCSV(textSt);
+    renderNetWorth(stAssets, stLiabs, 'bal-st-networth');
+    renderAccounts(stAssets, 'bal-st-assets');
+    renderAccounts(stLiabs,  'bal-st-liabilities');
     const allAccounts = useAssets.concat(useLiabs);
     const stale = allAccounts.filter(a => a.updated && (a.updated.includes('day') && parseInt(a.updated) > 5));
     const now2 = new Date();
